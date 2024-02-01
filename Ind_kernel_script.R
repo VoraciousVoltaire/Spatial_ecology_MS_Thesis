@@ -32,6 +32,11 @@ nbs_mylocs <- indiv_merged_df %>%
   dplyr::mutate(year = year(timestamp))
 names(nbs_mylocs)[names(nbs_mylocs) == "ring"] <- "individ_id"
 
+
+# Creating a new combined dataset which merges tracks from Skalfandi and Langanes (distance between colonies: 130.429 km)
+colonies_to_combine <- c("Skjalfandi", "Langanes")
+nbs_mylocs$colony[nbs_mylocs$colony %in% colonies_to_combine] <- "Combined"
+
 # Defining land----
 land <- as(world, "Spatial")
 
