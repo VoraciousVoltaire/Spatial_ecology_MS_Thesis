@@ -8,9 +8,12 @@ library(tidyverse)
 library(geosphere) # for calculating 
 library(spData) # for world 
 
+<<<<<<< HEAD
 # changes
 
 
+=======
+>>>>>>> 9e873e242a0cea3276ede824ab9788f3ef2b8083
 # Loading data----
 
 datadir <- "/Users/ameydanole/Desktop/ENS_Rennes/argh/Microplastic_ingestion_by_fulmarus_glacialis/Ind/input_data"
