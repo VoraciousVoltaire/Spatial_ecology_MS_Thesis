@@ -175,6 +175,6 @@ for(i in unique(nbs_mylocs$colony)){ # First for loop start
 } # first for loop end
 
 
-change
+
 
 

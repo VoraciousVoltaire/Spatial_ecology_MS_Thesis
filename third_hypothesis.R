@@ -5,6 +5,7 @@ library(amt)
 library(dplyr)
 library(ggplot2)
 library(sp)
+library(raster)
 
 # Loading data----
 
@@ -103,7 +104,40 @@ colnames(variance_output)[colnames(variance_output) == "population"] <- "Colony"
 
 # correlation test
 corr_df <- merge(kde_final_overlap, variance_output, by = "Colony")
-View(corr_df)
+write.csv(corr_df, "/Users/ameydanole/Desktop/ENS_Rennes/argh/Amey_Danole_MS_Thesis/Ind/outputs/csv/third_hyp_corr_test.csv", row.names = F)
 
 correlation <- cor.test(corr_df$Overlap_score, corr_df$variance, method = "kendall")
 print(correlation)
+
+# Saving individual home range rasters for raster multiplication with the plastics raster----
+
+for(i in unique(nbs_mylocs$colony)){ # First for loop start
+  sub <- as.data.frame(nbs_mylocs) %>% filter(colony == i) 
+  
+  # Setting a colony-centered crs 
+  median_loc <- cbind(median(sub$lon), median(sub$lat))
+  DgProj <- sp::CRS(paste0("+proj=laea +lon_0=",median_loc[1]," +lat_0=",median_loc[2]," +ellps=GRS80 +towgs84=0,0,0,0,0,0,0 +units=m ", sep="")) 
+  
+  NF_tracks <- sub %>% 
+    make_track(lon, lat, timestamp, id = individ_id, 
+               crs = 4326) %>%
+    nest(data = -"id") %>% 
+    arrange(id)
+  attr(NF_tracks, "crs") <- DgProj
+  
+  base_trast <- make_trast(NF_nonest_tracks, res = 50)
+  
+  NF_tracks_KDE <- NF_tracks %>% 
+    mutate(kde = map(data, function(x) 
+      x %>% hr_kde(trast = base_trast, levels = 0.95)))
+
+  # Next step- check what the issue is here: why is it being displayed as EPSG:4326 instead of the laea format? Check what's wrong when the SpatRaster is being saved
+  (NF_tracks_KDE$kde[[4]]$crs)
+  
+  for(j in 1:length(NF_tracks_KDE$kde)){
+    raster::writeRaster(NF_tracks_KDE$kde[[j]]$ud, 
+                filename = paste0("/Users/ameydanole/Desktop/ENS_Rennes/argh/Amey_Danole_MS_Thesis/Ind/outputs/amt_hr_rasters/",i,"_",j,".tif"), 
+                overwrite = T)
+  } # Second for loop ends
+ 
+} # First for loop ends
