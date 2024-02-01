@@ -13,7 +13,6 @@ library(terra)
 library(dplyr)
 library(tidyverse)
 library(adehabitatHR) # for calculating kernels and their volumes
-library(amt)
 library(spData) # for loading the spatial object 'world'
 
 # Setting outputs directory
@@ -171,5 +170,6 @@ for(i in unique(nbs_mylocs$colony)){ # First for loop start
 } # first for loop end
 
 
+change
 
 
