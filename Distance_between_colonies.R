@@ -8,7 +8,8 @@ library(tidyverse)
 library(geosphere) # for calculating 
 library(spData) # for world 
 
-# change
+# changes
+
 
 # Loading data----
 
