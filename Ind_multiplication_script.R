@@ -10,7 +10,7 @@ par(old.par)
 
 # Loading essential packages----
 
-# Loading data----
+# Defining and loading data----
 
 wd <- "/Users/ameydanole/Desktop/ENS_Rennes/argh/Microplastic_ingestion_by_fulmarus_glacialis/Ind" # setting a working directory
 dir_1by1 <- paste0(wd, "/outputs/multiplication_rasters/") # output directory

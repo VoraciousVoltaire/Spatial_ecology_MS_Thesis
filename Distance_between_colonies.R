@@ -5,7 +5,7 @@ library(dplyr)
 library(sf)
 library(sp)
 library(tidyverse)
-library(geosphere) # for calculating 
+library(geosphere) # for calculating distance
 library(spData) # for world 
 
 # Loading data----
