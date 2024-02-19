@@ -25,6 +25,7 @@ library(stringr)
 library(RColorBrewer)
 library(viridis)
 library(viridisLite)
+library(ppcor)
 
 # Loading data-----
 datadir <- "/Users/ameydanole/Desktop/ENS_Rennes/argh/Microplastic_ingestion_by_fulmarus_glacialis/Ind/input_data"
@@ -563,3 +564,24 @@ View(analysis_df)
 
 corr_output <- cor.test(analysis_df$population_exposure, analysis_df$ecoqo, method = "kendall")
 print(corr_output) # can be explained by percent_nas
+
+# Controlling for percentage nas----
+nas_df <- read.csv("nas_exposure_scores_by_month.csv")
+nas_df[c("population", "month")] <-  do.call(rbind, strsplit(as.character(nas_df$name), "_")) 
+View(nas_df)
+
+median_nas_df <- nas_df %>% group_by(population) %>% summarize(median_percent_na <- median(percent_na))
+median_nas_df$population[2] <- "Canadian.Eastern.Arctic.-.West.Greenland"
+analysis_df_2 <- merge(analysis_df, median_nas_df, by = "population")
+colnames(analysis_df_2) <- c("region", "pers", "ecoqo", "percent_nas")
+
+corr_output_2 <- spcor.test(analysis_df_2$ecoqo, analysis_df_2$pers, analysis_df_2$percent_nas, method = "kendall")
+corr_output_3 <- cor.test(analysis_df_2$ecoqo, analysis_df_2$pers, method = "kendall")
+
+print(corr_output_2)
+print(corr_output_3)
+
+
+
+
+
