@@ -132,11 +132,14 @@ nas_no_na
 mean(nas_no_na$percent_na)
 
 exposure_score_csv <- read.csv("exposure_scores_by_month.csv")
-pop_exposure <- exposure_score_csv %>%
+month_exp_wo_Alk <- exposure_score_csv[-2,]
+View(month_exp_wo_Alk)
+
+pop_exposure_month <- month_exp_wo_Alk %>%
   group_by(population) %>%  
-  summarise(population_exposure = round(mean(exposure_score), 4)) %>%
+  summarise(population_exposure = round(median(exposure_score), 4)) %>%
   data.frame() 
-write.csv(pop_exposure, "exposure_scores_by_population.csv",
+write.csv(pop_exposure_month, "month_exposure_scores_by_population.csv",
           row.names = F) 
 Species_exposure_score <- mean(pop_exposure$population_exposure)
 Species_exposure_score 
