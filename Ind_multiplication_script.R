@@ -127,12 +127,17 @@ nas$percent_na <- nas$nas/nas$vals*100
 head(nas)
 
 exposure_score_csv <- read.csv(paste0(wd, "/outputs/csv/exposure_scores_by_individual.csv"))
-pop_exposure <- exposure_score_csv %>%
+
+ind_exposure_scores_csv <- read.csv("/Users/ameydanole/Desktop/ENS_Rennes/argh/Amey_Danole_MS_Thesis/Ind/outputs/csv/exposure_scores_by_individual.csv")
+
+ind_pop_exposure <- ind_exposure_scores_csv %>%
   group_by(population) %>%  
-  summarise(population_exposure = round(mean(exposure_score), 4)) %>%
+  summarise(population_exposure = round(median(exposure_score), 4)) %>%
   data.frame() 
-write.csv(pop_exposure, "exposure_scores_by_population.csv",
+
+setwd("/Users/ameydanole/Desktop/ENS_Rennes/argh/Amey_Danole_MS_Thesis/Ind/outputs/csv/")
+write.csv(ind_pop_exposure, "ind_exposure_scores_by_population.csv",
           row.names = F) 
-Species_exposure_score <- mean(pop_exposure$population_exposure)
+Species_exposure_score <- mean(ind_pop_exposure$population_exposure)
 Species_exposure_score 
 
