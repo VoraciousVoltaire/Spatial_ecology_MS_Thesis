@@ -146,8 +146,9 @@ for(i in unique(df$colony)){ # First for loop begins
       vud <- adehabitatHR::getvolumeUD(kudl)
       
       fud <- vud[[1]]
+      
       hr95 <- as.data.frame(fud)[,1]
-      hr95 <- as.data.frame(fud)[,1]
+      hr95 <- as.numeric(hr95 <= 95)
       hr95 <- data.frame(hr95)
       coordinates(hr95) <- coordinates(fud)
       sp::gridded(hr95) <- TRUE
