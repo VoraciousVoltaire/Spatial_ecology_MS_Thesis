@@ -88,6 +88,7 @@ p5
 multipolygon <- PAME_shapefile
 pame <- multipolygon[1:15,c(3,10)]
 
+
 # Defining a for loop results data frame----
 
 long_results_df <- data.frame(matrix(ncol = 4))
@@ -129,6 +130,7 @@ for(j in pame$LME_NAME){ # Second for loop starts
 } # First for loop ends
 
 View(long_results_df)
+
 long_results_df[46894,]
 nrow(indiv_merged_df) - 57746
 indiv_merged_df[indiv_merged_df$lon == "-9.5195" & indiv_merged_df$lat == "60.9932",]
@@ -183,6 +185,7 @@ for(i in 159618:length(indiv_merged_df$individ_id)){ # First for loop starts
   } # Second for loop ends
 } # First for loop ends
 
+
 View(long_results_4)
 nrow(long_results_4)
 (long_results_4)[nrow(long_results_4),]
@@ -209,10 +212,14 @@ valid_pame <- st_make_valid(PAME_shapefile)
 # Finding which points lie inside which polygons
 joined <- st_join(sf_df, valid_pame, join = st_intersects)
 joined_df <- as.data.frame(joined)
-condensed_joined_df <- joined_df %>% dplyr::select(c("ring", "timestamp", "LME_NAME"))
+condensed_joined_df <- joined_df %>% dplyr::select(c("individ_id", "timestamp", "LME_NAME"))
+setwd("/Users/ameydanole/Desktop/ENS_Rennes/argh/Amey_Danole_MS_Thesis/Second_hyp/outputs/csv/")
+write.csv(condensed_joined_df, "condensed_joined_df_with_pame_regions.csv")
 
 # Defining relevant regions for hypothesis
 relevant_regions <- c("North Sea", "Faroe Plateau", "Iceland Shelf and Sea", "Canadian Eastern Arctic - West Greenland", "Barents Sea")
+# Added this line to get a comprehensive list
+relevant_regions <- unique(condensed_joined_df$LME_NAME)
 
 # Pasting month_kernel script here----
 
@@ -233,10 +240,12 @@ write.csv(n_birds_tracked_per_year,
 
 # Merging----
 indiv_merged_df <- merge(mylocs, summary_info, by = "ring") 
-new_indiv_merged_df <- merge(indiv_merged_df, condensed_joined_df, by = c("ring", "timestamp"))
+names(indiv_merged_df)[1] <- "individ_id"
+new_indiv_merged_df <- merge(indiv_merged_df, condensed_joined_df, by = c("individ_id", "timestamp"))
+write.csv(new_indiv_merged_df, "final_df_for_hyp_2.csv")
 
 nbs_mylocs <- new_indiv_merged_df %>% 
-  filter(!grepl(c('-04-|-05-|-06-|-07-|-08-|-09-') ,timestamp)) %>%
+  # filter(!grepl(c('-04-|-05-|-06-|-07-|-08-|-09-') ,timestamp)) %>%
   dplyr::mutate(year = year(timestamp))
 names(nbs_mylocs)[names(nbs_mylocs) == "ring"] <- "individ_id"
 
@@ -267,6 +276,9 @@ proj_wgs84 <- sp::CRS(sp::proj4string(land))
 # plot(land)
 # proj_wgs84 <- crs(land)
 
+ss_for_kernel_cumulative_df <- data.frame(matrix(ncol = 3))
+colnames(ss_for_kernel_cumulative_df) <- c("Region", "Month", "Sample_size_for_kde")
+
 # for loop for computing input hr rasters for multiplication---- 
 for(i in relevant_regions){ # First for loop begins
   sub <- df %>% filter(LME_NAME == i)
@@ -275,7 +287,7 @@ for(i in relevant_regions){ # First for loop begins
     tracks_wgs <- sub[sub$month == months[month_number],] 
     
     sub <- subset(sub, lat < 90)  
-    png(filename = paste0(dir_kernels, "/distributions/", i, ".png"))  
+    png(filename = paste0(dir_kernels, "/distributions/", i,"_",month_number,".png"))  
     plot(lat~lon, data = sub, type= "n", asp = 1, 
          xlim=c(min(all_data$lon) + 0.2,max(all_data$lon) - 0.2), 
          ylim=c(min(all_data$lat) + 0.5, max(all_data$lat) - 0.5), 
@@ -287,7 +299,7 @@ for(i in relevant_regions){ # First for loop begins
     
     # Kernel density estimation----
     
-    if(nrow(tracks_wgs) > 4){
+    if(nrow(tracks_wgs) > 50){
       
       if(min(tracks_wgs$lon) <= -179 ){ lon_min <- -180
       } else {lon_min <- floor(min(tracks_wgs$lon))-1 }
@@ -341,7 +353,7 @@ for(i in relevant_regions){ # First for loop begins
       
       fud <- vud[[1]]
       hr95 <- as.data.frame(fud)[,1]
-      hr95 <- as.data.frame(fud)[,1]
+      hr95 <- as.numeric(hr95 <= 95)
       hr95 <- data.frame(hr95)
       coordinates(hr95) <- coordinates(fud)
       sp::gridded(hr95) <- TRUE
@@ -385,11 +397,13 @@ for(i in relevant_regions){ # First for loop begins
       rast_mask_final <- raster::mask(rast_mask_sum1, mask_proj_pol, inverse = TRUE)
       rast_mask_final2 <- rast_mask_final 
       
+      raster::writeRaster(rast_mask_final, filename = paste0(datadir,"Second_hyp_tifs/",KDE_ref,".tif"), 
+                          format = "GTiff", overwrite = TRUE)
+      
       mask_wgs84 <- projectRaster(rast_mask_final2, crs = proj_wgs84, over = F)
       
       KDE_ref <- paste0(i, "_", months[month_number])
-      raster::writeRaster(rast_mask_final, filename = paste0(datadir,"Second_hyp_tifs/",KDE_ref,".tif"), 
-                          format = "GTiff", overwrite = TRUE)
+      
       raster::writeRaster(mask_wgs84, filename = paste0(dir_kernels,"/unique_tifs/",KDE_ref,".tif"), 
                           format = "GTiff", overwrite = TRUE)
       
@@ -398,6 +412,9 @@ for(i in relevant_regions){ # First for loop begins
       plot(land, add = T, col = "#66000000")
       dev.off()
       
+      # ss_for_kernel <- data.frame(Region = i, Month = month_number, Sample_size_for_kde = nrow(tracks_wgs))
+      # ss_for_kernel_cumulative_df <- rbind(ss_for_kernel_cumulative_df, ss_for_kernel)
+      
       
     } # First if loop ends
   } # Second for loop ends
@@ -405,7 +422,10 @@ for(i in relevant_regions){ # First for loop begins
 
 # Canadian Eastern Arctic- West Greenland is missing. Because there was just 1 observation in the year 2021 for March. 
 
-
+View(ss_for_kernel_cumulative_df)
+ss_for_kernel <- ss_for_kernel_cumulative_df[-1,]
+setwd("/Users/ameydanole/Desktop/ENS_Rennes/argh/Amey_Danole_MS_Thesis/Second_hyp/outputs/csv/")
+write.csv(ss_for_kernel, "Sample_size_for_KDE.csv")
 
 
 
@@ -525,10 +545,11 @@ for (i in 1:length(files)){ # First for loop begins
 }
 
 setwd("/Users/ameydanole/Desktop/ENS_Rennes/argh/Amey_Danole_MS_Thesis/Second_hyp/outputs/csv/")
-write.csv(dat, "exposure_scores_by_month.csv",
+write.csv(dat, "correct_exposure_scores_by_month.csv",
           row.names = F)  
 nas$percent_na <- nas$nas/nas$vals*100
-write.csv(nas, "nas_exposure_scores_by_month.csv",
+View(nas)
+write.csv(nas, "correct_nas_exposure_scores_by_month.csv",
           row.names = F)  
 
 
@@ -537,21 +558,45 @@ nas_no_na <- subset(nas,vals > 0)
 nas_no_na
 mean(nas_no_na$percent_na)
 
-exposure_score_csv <- read.csv("exposure_scores_by_month.csv")
+exposure_score_csv <- read.csv("correct_exposure_scores_by_month.csv")
 pop_exposure <- exposure_score_csv %>%
   group_by(population) %>%  
   summarise(population_exposure = round(median(exposure_score), 4)) %>%
   data.frame() 
-write.csv(pop_exposure, "exposure_scores_by_population.csv",
+write.csv(pop_exposure, "correct_exposure_scores_by_population.csv",
           row.names = F) 
 Species_exposure_score <- mean(pop_exposure$population_exposure)
 Species_exposure_score 
 
+new_df_1 <- exposure_score_csv[,-c(3,4)]
+colnames(new_df_1) <- c("Region", "Month", "pers")
+
+new_df_2 <- read.csv("Sample_size_for_KDE.csv")
+new_df_2$Region <- gsub(" ", ".", new_df_2$Region)
+new_df_2 <- new_df_2[,-1]
+
+new_df_2$Region[new_df_2$Region == "Celtic-Biscay.Shelf"] <- "Celtic.Biscay.Shelf" 
+new_df_2$Region[new_df_2$Region == "Canadian.Eastern.Arctic.-.West.Greenland"] <- "Canadian.Eastern.Arctic...West.Greenland"
+new_df_2$Region[new_df_2$Region == "Labrador.-.Newfoundland"] <- "Labrador...Newfoundland" 
+new_df_2$Region[new_df_2$Region ==  "Northeast.U.S..Continental.Shelf"] <- "Northeast.U.S..Continental.Shelf" 
+
+new_df_3 <- merge(new_df_1, new_df_2, by = c("Region", "Month"))
+nas[c("Region", "Month")] <- do.call(rbind, strsplit(nas$name, "_", fixed = T))
+new_df_4 <- nas[,-1]
+new_df_5 <- merge(new_df_3, new_df_4, by = c("Region", "Month"))
+write.csv(new_df_5, "Correct_base_df.csv")
+
+correct_base_analysis_df <- new_df_5 %>% group_by(Region) %>% 
+  summarise(median_percent_na = median(percent_na), median_pers = median(pers))
+write.csv(correct_base_analysis_df, "correct_base_analysis_df.csv")
+
 # Correlation test now!!!!----
 
 # Creating a dataset for EcoQO values
+relevant_regions <- c("North Sea", "Faroe Plateau", "Iceland Shelf and Sea", "Canadian Eastern Arctic - West Greenland", "Barents Sea")
 ecoqo_df <- data.frame(population = relevant_regions, ecoqo = c(51, 40.5, 27.6, 14, 22.5))
 ecoqo_df$population <- gsub(" ",".", ecoqo_df$population)
+
 pop_exposure$population[2] <- "Canadian.Eastern.Arctic.-.West.Greenland"
 
 normality_test_1 <- shapiro.test(pop_exposure$population_exposure)  
@@ -572,6 +617,8 @@ View(nas_df)
 
 median_nas_df <- nas_df %>% group_by(population) %>% summarize(median_percent_na <- median(percent_na))
 median_nas_df$population[2] <- "Canadian.Eastern.Arctic.-.West.Greenland"
+write.csv(median_nas_df, "median_nas_df.csv")
+colnames(median_nas_df) <- c("Region","Median_percent_nas")
 analysis_df_2 <- merge(analysis_df, median_nas_df, by = "population")
 colnames(analysis_df_2) <- c("region", "pers", "ecoqo", "percent_nas")
 
@@ -581,7 +628,12 @@ corr_output_3 <- cor.test(analysis_df_2$ecoqo, analysis_df_2$pers, method = "ken
 print(corr_output_2)
 print(corr_output_3)
 
+# New corrected correlation test
 
+colnames(ecoqo_df) <- c("Region", "EcoQO value")
+correct_base_analysis_df$Region[correct_base_analysis_df$Region ==  "Canadian.Eastern.Arctic...West.Greenland"] <- "Canadian.Eastern.Arctic.-.West.Greenland"
+correct_hyp_2_analysis_df <- merge(ecoqo_df, correct_base_analysis_df, by = "Region")
+write.csv(correct_hyp_2_analysis_df, "correct_hyp_2_analysis_df.csv")
+correct_correlation_test <- cor.test(correct_hyp_2_analysis_df$`EcoQO value`, correct_hyp_2_analysis_df$median_pers, method = "kendall")
 
-
-
+print(correct_correlation_test)
