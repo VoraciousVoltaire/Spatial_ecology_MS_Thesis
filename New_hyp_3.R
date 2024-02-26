@@ -2,7 +2,6 @@
 
 # first testing the correlation between the values calculated on the basis of amt and adehabitathr kde overlap functions----
 
-getwd()
 input_dir <- "/Users/ameydanole/Desktop/ENS_Rennes/argh/Amey_Danole_MS_Thesis/Third_hyp/output/csv"
 
 amt_overlap <- read.csv(paste0(input_dir, "/ba_third_hyp_corr_test.csv"))[,1:2]
@@ -75,7 +74,7 @@ months <- sort(unique(df$month))
 
 df_mod <- df %>% mutate(tracking_year = ifelse(month < 7, year - 1, year))
 nbs_years <- sort(unique(df_mod$tracking_year))
-
+unique(df_mod$colony)
 # Defining land----
 
 land <- as(world, "Spatial")
@@ -86,8 +85,8 @@ proj_wgs84 <- sp::CRS(sp::proj4string(land))
 
 # Doing a separate for loop for calculating kernel overlap on a tracking_year basis----
 
-results_df <- data.frame(matrix(ncol = 2))
-colnames(results_df) <- c("Colony", "Overlap_score")
+results_df <- data.frame(matrix(ncol = 3))
+colnames(results_df) <- c("Colony", "Overlap_score", "Sample_size_for_kde")
 
 to_combine <- c("Skjalfandi", "Langanes")
 df_mod$colony[df_mod$colony %in% to_combine] <- "Combined"
@@ -171,7 +170,7 @@ if(length(attributes(kudl)$names) > 1){ # Second if loop starts
   colnames(median_overlap_df) <- "overlap"
   colony_hroverlap <- median(median_overlap_df$overlap) 
   
-  to_bind <- data.frame("Colony" = paste0(i,"_",(unique(sub$tracking_year))[j]), "Overlap_score" = colony_hroverlap)
+  to_bind <- data.frame("Colony" = paste0(i,"_",(unique(sub$tracking_year))[j]), "Overlap_score" = colony_hroverlap, "Sample_size_for_kde" = nrow(tracks_wgs))
   results_df <- rbind(results_df, to_bind)
 
   
@@ -186,16 +185,21 @@ View(kde_final_overlap)
 write.csv(kde_final_overlap, "/Users/ameydanole/Desktop/ENS_Rennes/argh/Amey_Danole_MS_Thesis/Third_hyp/output/csv/final_new_third_hyp_3.csv")
 
 range(kde_final_overlap$Overlap_score) #  0.6639227 0.9944815
+# new range: 0.3009095 0.9449845
 kde_final_overlap
 # This reminds me to add one more column for sample size of each estimation 
 
 kde_final_overlap[c("Just_colony", "Tracking_year")] <- do.call(rbind, strsplit(as.character(kde_final_overlap$Colony), "_", fixed = T))
+to_save <- kde_final_overlap[,-1] 
+
+setwd("/Users/ameydanole/Desktop/ENS_Rennes/argh/Amey_Danole_MS_Thesis/Third_hyp/output/csv/")
+write.csv(to_save, "final_hyp_3_part_1.csv")
 
 # Calculating a median according to just colony
 new_df <- kde_final_overlap %>% group_by(Just_colony) %>% summarize(median_overlap_score <- median(Overlap_score))
-colnames(new_df) <- c("population", "Overlap_score")
+colnames(new_df) <- c("Colony", "Overlap_score")
 # new_df$Colony <- gsub(" ", ".", new_df$population)
-write.csv(new_df, "/Users/ameydanole/Desktop/ENS_Rennes/argh/Amey_Danole_MS_Thesis/Third_hyp/output/csv/condensed_final_new_third_hyp_3.csv")
+write.csv(new_df, "/Users/ameydanole/Desktop/ENS_Rennes/argh/Amey_Danole_MS_Thesis/Third_hyp/output/csv/latest_final_third_hyp_3_part_1.csv")
   
 # Moment of truth
 final_final_analysis_df <- merge(new_df, tracking_year_pers_var, by = "population")
@@ -612,4 +616,23 @@ for(i in unique(df_mod_4$colony)){ # First for loop begins
   
   final_cor_test_hyp_3 <- cor.test(analysis_df_2$variance_pers, analysis_df_2$median_overlap_score, method = "kendall")
   print(final_cor_test_hyp_3)
+  
+  
+  # Final moment of truth----
+  df_part_1 <- new_df
+  df_part_1$Colony <- gsub(" ",".",df_part_1$Colony)
+ 
+  df_part_2 <- read.csv(paste0("/Users/ameydanole/Desktop/ENS_Rennes/argh/Amey_Danole_MS_Thesis/First_hyp/csv/Final_hypothesis_1_analysis_df.csv"))
+  df_part_3 <- df_part_2 %>% group_by(Colony) %>% summarise(variance_pers = var(pers), 
+                                                            median_percent_na = median(percent_na))
+ 
+  write.csv(df_part_3, "Variance_with_median_percent_na.csv")
+  df_part_4 <- merge(df_part_1, df_part_3, by = "Colony")
+ 
+
+  write.csv(df_part_4, "Base_analysis_df_for_hyp_3.csv")
+  
+  analysis_df_hyp_3 <- df_part_4[-c(1,2,8),]
+  analysis_df_hyp_3[order(analysis_df_hyp_3$variance_pers),]
+  cor.test(analysis_df_hyp_3$Overlap_score, analysis_df_hyp_3$variance_pers, method = "kendall") # still needs refining
   
