@@ -9,6 +9,15 @@ old.par <- par(mar = c(0, 0, 0, 0))
 par(old.par)
 
 # Loading essential packages----
+library(adehabitatHR)
+library(sf)
+library(sp)
+library(raster)
+library(dplyr)
+library(tidyverse)
+library(RColorBrewer)
+library(viridisLite)
+library(viridis)
 
 # Defining and loading data----
 
@@ -92,22 +101,24 @@ for (i in 1:length(files)){
   over_score[is.na(over_score)] <- 0
   exposure_score <- round(sum(raster::getValues(over_score))*1000000,4)
   
-  png(paste0(dir_1by1,"maps/",name,".png"), width=1399,height=455)
-  par(mfrow=c(1,2))
-  plot(a_proj2, main=paste0(name," distribution"), col = colsviri,legend = F)
-  plot(over, main = paste0("Exposure score = ", exposure_score),
-       col = colsinf,legend = F)
+  # Commenting this out for the time being
   
-  dev.off()
-  
-  if(sum(na_over@data@values)> 0){
-    png(paste0(dir_1by1,"na_maps/",name,".png"), width = 1399, height = 455)
-    par(mfrow=c(1,2))
-    plot(a_proj2, main = name, col = colsviri, legend = F)
-    plot(na_over, main = paste0("Exposure Nas = ", sum(na_over@data@values)),
-         col = colsinf, legend = F)
-    dev.off()
-  }
+  # png(paste0(dir_1by1,"maps/",name,".png"), width=1399,height=455)
+  # par(mfrow=c(1,2))
+  # plot(a_proj2, main=paste0(name," distribution"), col = colsviri,legend = F)
+  # plot(over, main = paste0("Exposure score = ", exposure_score),
+  #      col = colsinf,legend = F)
+  # 
+  # dev.off()
+  # 
+  # if(sum(na_over@data@values)> 0){ # if loop starts
+  #   png(paste0(dir_1by1,"na_maps/",name,".png"), width = 1399, height = 455)
+  #   par(mfrow=c(1,2))
+  #   plot(a_proj2, main = name, col = colsviri, legend = F)
+  #   plot(na_over, main = paste0("Exposure Nas = ", sum(na_over@data@values)),
+  #        col = colsinf, legend = F)
+  #   dev.off()
+  # } # if loop ends
   
   name_split <- strsplit(name,"_")[[1]]
   name_split
@@ -126,6 +137,8 @@ write.csv(dat, "exposure_scores_by_individual.csv",
 nas$percent_na <- nas$nas/nas$vals*100
 head(nas)
 
+write.csv(nas, "nas_ind.csv", row.names = F)
+
 exposure_score_csv <- read.csv(paste0(wd, "/outputs/csv/exposure_scores_by_individual.csv"))
 
 ind_exposure_scores_csv <- read.csv("/Users/ameydanole/Desktop/ENS_Rennes/argh/Amey_Danole_MS_Thesis/Ind/outputs/csv/exposure_scores_by_individual.csv")
@@ -141,3 +154,10 @@ write.csv(ind_pop_exposure, "ind_exposure_scores_by_population.csv",
 Species_exposure_score <- mean(ind_pop_exposure$population_exposure)
 Species_exposure_score 
 
+# Creating a new (final) analysis dataframe
+df_1 <- read.csv("exposure_scores_by_individual.csv")
+df_2 <- df_1[,-c(3,4)]
+nas[c("population", "individual")] <- do.call(rbind, strsplit(as.character(nas$name), "_", fixed = T))
+nas_2 <- nas[,-c(1)]
+end_analysis_df <- merge(df_2, nas_2, by = c("population", "individual"))
+write.csv(end_analysis_df, "Analysis_dataframe_hyp_1.csv")
