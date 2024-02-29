@@ -124,6 +124,8 @@ write.csv(dat, "exposure_scores_by_month.csv",
           row.names = F)  
 nas$percent_na <- nas$nas/nas$vals*100
 head(nas)
+write.csv(nas, "new_nas_by_month.csv",
+          row.names = F)  
 
 
 #2 don't exist ----------this isn't required in our case
@@ -139,6 +141,26 @@ pop_exposure_month <- month_exp_wo_Alk %>%
   group_by(population) %>%  
   summarise(population_exposure = round(median(exposure_score), 4)) %>%
   data.frame() 
+View(pop_exposure_month)
+
+# Correlation check between month scores and ind scores----
+# Positive correlation yes
+pop_exposure_ind <- read.csv("/Users/ameydanole/Desktop/ENS_Rennes/argh/Amey_Danole_MS_Thesis/Ind/outputs/csv/ind_exposure_scores_by_population.csv")
+colnames(pop_exposure_month) <- c("Colony", "pers_months")
+colnames(pop_exposure_ind) <- c("Colony", "pers_ind")
+merged_df <- merge(pop_exposure_ind, pop_exposure_month, by = "Colony")
+cor.test(merged_df$pers_ind, merged_df$pers_months, method = "kendall")
+# Kendall's rank correlation tau
+
+# data:  merged_df$pers_ind and merged_df$pers_months
+# T = 53, p-value = 3.257e-06
+# alternative hypothesis: true tau is not equal to 0
+# sample estimates:
+#   tau 
+# 0.9272727 
+
+
+
 write.csv(pop_exposure_month, "month_exposure_scores_by_population.csv",
           row.names = F) 
 Species_exposure_score <- mean(pop_exposure$population_exposure)
