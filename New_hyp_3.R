@@ -78,7 +78,6 @@ unique(df_mod$colony)
 # Defining land----
 
 land <- as(world, "Spatial")
-land
 
 # Defining wgs84 projection
 proj_wgs84 <- sp::CRS(sp::proj4string(land))
@@ -86,7 +85,7 @@ proj_wgs84 <- sp::CRS(sp::proj4string(land))
 # Doing a separate for loop for calculating kernel overlap on a tracking_year basis----
 
 results_df <- data.frame(matrix(ncol = 3))
-colnames(results_df) <- c("Colony", "Overlap_score", "Sample_size_for_kde")
+colnames(results_df) <- c("Colony", "udoi_Overlap_score", "ba_Overlap_score")
 
 to_combine <- c("Skjalfandi", "Langanes")
 df_mod$colony[df_mod$colony %in% to_combine] <- "Combined"
@@ -106,7 +105,7 @@ for(i in unique(df_mod$colony)){ # First for loop begins
     
     # Kernel density estimation----
     
-    if(nrow(tracks_wgs) > 4){
+    if(nrow(tracks_wgs) > 50){
       
       if(min(tracks_wgs$lon) <= -179 ){ lon_min <- -180
       } else {lon_min <- floor(min(tracks_wgs$lon))-1 }
@@ -170,7 +169,14 @@ if(length(attributes(kudl)$names) > 1){ # Second if loop starts
   colnames(median_overlap_df) <- "overlap"
   colony_hroverlap <- median(median_overlap_df$overlap) 
   
-  to_bind <- data.frame("Colony" = paste0(i,"_",(unique(sub$tracking_year))[j]), "Overlap_score" = colony_hroverlap, "Sample_size_for_kde" = nrow(tracks_wgs))
+  ade_kde_overlap_2 <- kerneloverlaphr(kudl, meth = "BA", percent = 95, conditional = F)
+  df_ba <- as.data.frame(ade_kde_overlap_2)
+  df_ba_2 <- apply(df_ba, 1, median, na.rm = T)
+  median_overlap_df_ba <- as.data.frame(df_ba_2)
+  colnames(median_overlap_df_ba) <- "overlap"
+  colony_hroverlap_ba <- median(median_overlap_df_ba$overlap) 
+  
+  to_bind <- data.frame("Colony" = paste0(i,"_",(unique(sub$tracking_year))[j]), "udoi_Overlap_score" = colony_hroverlap, "ba_Overlap_score" = colony_hroverlap_ba)
   results_df <- rbind(results_df, to_bind)
 
   
@@ -182,11 +188,55 @@ if(length(attributes(kudl)$names) > 1){ # Second if loop starts
 View(results_df)
 kde_final_overlap <- results_df[-1,]
 View(kde_final_overlap)
-write.csv(kde_final_overlap, "/Users/ameydanole/Desktop/ENS_Rennes/argh/Amey_Danole_MS_Thesis/Third_hyp/output/csv/final_new_third_hyp_3.csv")
+write.csv(kde_final_overlap, "/Users/ameydanole/Desktop/ENS_Rennes/argh/Amey_Danole_MS_Thesis/Third_hyp/output/csv/final_new_third_hyp_3_with_ba.csv")
 
-range(kde_final_overlap$Overlap_score) #  0.6639227 0.9944815
-# new range: 0.3009095 0.9449845
-kde_final_overlap
+range(kde_final_overlap$udoi_Overlap_score) #  0.3009095 0.9449845
+range(kde_final_overlap$ba_Overlap_score) # 0.6639227 0.9944815
+
+install.packages("psych")
+library(psych)
+
+kde_final_overlap[c("Colony", "Tracking_year")] <- do.call(rbind, str_split(as.character(kde_final_overlap$Colony), pattern = "_"))
+                                                        
+harmonic_kde_final_overlap <- kde_final_overlap %>% group_by(Colony) %>%
+  summarise(udoi = harmonic.mean(udoi_Overlap_score), ba = harmonic.mean(ba_Overlap_score))
+harmonic_kde_final_overlap$final_score <- apply(harmonic_kde_final_overlap[, c(2, 3)], 1, harmonic.mean)
+
+setwd("/Users/ameydanole/Desktop/ENS_Rennes/argh/Amey_Danole_MS_Thesis/Third_hyp/output/csv/")
+write.csv(harmonic_kde_final_overlap, "harmonic_hr_overlap.csv")
+
+hyp_1_input <- read.csv("/Users/ameydanole/Desktop/ENS_Rennes/argh/Amey_Danole_MS_Thesis/Third_hyp/input_from_hyp_1/correct_ind_pers_by_population.csv")
+names(hyp_1_input)[1] <- "Colony"
+harmonic_kde_final_overlap$Colony <- gsub(" ", ".", harmonic_kde_final_overlap$Colony)
+merged_df <- merge(hyp_1_input[-c(1,2),], harmonic_kde_final_overlap, by = "Colony")
+write.csv(merged_df, "harmonic_overlap_complete_df.csv")
+View(merged_df)
+cor.test(merged_df$pers, merged_df$udoi, method = "kendal")
+
+# Just checking a hunch----
+
+names(final_df)[1] <- "Colony" # final_df borrowed by lat_exposure script
+lat_merged_df <- merge(merged_df, final_df[,-2], by = "Colony")
+View(lat_merged_df)
+cor.test(lat_merged_df$lat, lat_merged_df$pers, method = "kendal")
+lat_merged_df
+
+
+merged_df_2 <- merge(hyp_1_input, harmonic_kde_final_overlap, by = "Colony")
+merged_df_with_Alk_Bjo <- merge(merged_df_2, final_df[,-2], by = "Colony")
+View(merged_df_with_Alk_Bjo)
+cor.test(merged_df_with_Alk_Bjo$lat, merged_df_with_Alk_Bjo$pers, method = "kendal") # significant
+cor.test(merged_df_with_Alk_Bjo[-c(1,2),]$lat, merged_df_with_Alk_Bjo[-c(1,2),]$final_score, method = "kendal") # close 
+
+
+
+
+
+
+
+
+
+
 # This reminds me to add one more column for sample size of each estimation 
 
 kde_final_overlap[c("Just_colony", "Tracking_year")] <- do.call(rbind, strsplit(as.character(kde_final_overlap$Colony), "_", fixed = T))
