@@ -82,7 +82,6 @@ if(nrow(tracks_wgs) > 4){
   
   fud <- vud[[1]]
   hr95 <- as.data.frame(fud)[,1]
-  hr95 <- as.data.frame(fud)[,1]
   hr95 <- data.frame(hr95)
   coordinates(hr95) <- coordinates(fud)
   sp::gridded(hr95) <- TRUE
@@ -118,10 +117,27 @@ if(nrow(tracks_wgs) > 4){
   mask_proj <- sp::spTransform(land, DgProj)   ## changing projection
   mask_proj_pol <- as(mask_proj, "SpatialPolygons")   ## converting SpatialPolygonsDataFrame to SpatialPolygons
   plot(cropped)
+  mask_proj_pol
   plot(mask_proj_pol, add = T)
+  mask_proj_pol
+  
+  # trying to figure out why
+  
+  # Check for overlap
+  if (extent_mask[1] < extent_cropped[2] & extent_mask[2] > extent_cropped[1] &
+      extent_mask[3] < extent_cropped[4] & extent_mask[4] > extent_cropped[3]) {
+    print("mask_proj_pol is within the extent of cropped")
+  } else {
+    print("mask_proj_pol is not within the extent of cropped")
+  }
   
   # The error lies here; can't figure out why 
-  rast_mask_na <- raster::mask(cropped, mask = mask_proj_pol, inverse = T) 
+  cropped <- trim(cropped, value = NA)
+  plot(cropped)
+  lines(mask_proj_pol)
+  extent(mask_proj_pol)
+  extent(mask_proj_pol) = extent(cropped) # Don't get this
+  rast_mask_na <- raster::mask(cropped, mask_proj_pol) 
   plot(rast_mask_na)
   
   rast_mask <- rast_mask_na

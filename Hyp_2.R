@@ -637,3 +637,6 @@ write.csv(correct_hyp_2_analysis_df, "correct_hyp_2_analysis_df.csv")
 correct_correlation_test <- cor.test(correct_hyp_2_analysis_df$`EcoQO value`, correct_hyp_2_analysis_df$median_pers, method = "kendall")
 
 print(correct_correlation_test)
+
+for_corr <- read.csv("/Users/ameydanole/Desktop/ENS_Rennes/argh/Amey_Danole_MS_Thesis/Second_hyp/outputs/csv/correct_hyp_2_analysis_df.csv")
+cor.test(for_corr$EcoQO.value, for_corr$median_pers, method = "kendall")

@@ -10,6 +10,10 @@ library(plotly)
 library(ggeffects)
 library(viridis)
 library(viridisLite)
+library(car) # for ANOVA
+library(multcomp) # for glht
+library(lsmeans) # for lsm
+library(rcompanion) # for the function nagelkerke
 
 # The code for gam is derived from Wood's book on GAMs and from the following website: https://m-clark.github.io/generalized-additive-models/application.html
 
@@ -25,6 +29,14 @@ analysis_df <- corrected_df[!(corrected_df$population == "Jan.Mayen" &
                                 corrected_df$tracking_year == 2018), ]
 analysis_df <- analysis_df[,-c(4,5)]
 colnames(analysis_df) <- c("Colony", "Individ_id", "Tracking_year", "pers")
+analysis_df_2 <- analysis_df[!(analysis_df$Colony == "Alkefjellet"),] # removing Alkefjellet
+analysis_df_3 <- analysis_df_2 %>% filter(!(Colony == "Inishkea" | Colony == "Isle of Canna"),) # removing Alkefjellet, Inishkea and Isle of Canna
+analysis_df$Colony <- as.factor(analysis_df$Colony)
+analysis_df$Individ_id <- as.factor(analysis_df$Individ_id)
+analysis_df_2$Colony <- as.factor(analysis_df_2$Colony)
+analysis_df_2$Individ_id <- as.factor(analysis_df_2$Individ_id)
+analysis_df_3$Colony <- as.factor(analysis_df_3$Colony)
+analysis_df_3$Individ_id <- as.factor(analysis_df_3$Individ_id)
 
 # Exploring data----
 
@@ -88,6 +100,9 @@ AIC_total # don't know if this correct but even if it is, then doesn't matter si
 
 # Fitting a glmm finally----
 
+control_params <- glmerControl(optimizer = "bobyqa",
+                               optCtrl = list(maxfun = 100000))  # Maximum number of function evaluations
+
 glmm_model <- glmer(pers ~ Colony + (1 | Individ_id), family = Gamma(link = "identity"), data = analysis_df, control = control_params)
 AIC(glmm_model) # 3453.074
 summary(glmm_model)
@@ -119,6 +134,7 @@ AIC(trial_mod_1) # 3974.622
 trial_mod_2 = lmer(pers ~ Colony + (1 | Individ_id), data = analysis_df,REML = T)
 AIC(trial_mod_2) # 3607.024; this tells us that (1 | Individ_id) should be added as a random effect
 
+
 # Choosing fixed effect
 trial_mod_3 = lmer(pers ~ 1 + (1 | Individ_id), data = analysis_df,REML = F)
 AIC(trial_mod_3) # 3673.142
@@ -149,15 +165,18 @@ inverse_glmm_model_2 <- glmer(log(pers) ~ Colony + (1 | Individ_id), family = Ga
 log_glmm_model_2 <- glmer(log(pers) ~ Colony + (1 | Individ_id), family = Gamma(link = "log"), data = analysis_df, control = control_params) # didn't converge
 
 # Removing Alkefjellet from the dataset
+View(analysis_df_2)
 glmm_model_3 <- glmer(pers ~ Colony + (1 | Individ_id), family = Gamma(link = "identity"), data = analysis_df_2, control = control_params)
-AIC(glmm_model_3) # 2485.363; lower than glmm_model_1 
+AIC(glmm_model_3) # 2485; lower than glmm_model_1 
 summary(glmm_model_3)
+shapiro.test(resid(glmm_model_3))
 qqnorm(resid(glmm_model_3))
 qqline(resid(glmm_model_3)) # non-normality remains
 hist(resid(glmm_model_3), breaks=90)
 analysis_df_2$resid = resid(glmm_model_3)
 boxplot(analysis_df_2$resid~analysis_df_2$Colony) # More or less homoskedastic
 ggplot(analysis_df_2, aes(x = Colony, y = resid)) + geom_boxplot() 
+
 
 # Will skew interpretability but trying this out with diff link functions
 inverse_glmm_model_3 <- glmer(pers ~ Colony + (1 | Individ_id), family = Gamma(link = "inverse"), data = analysis_df_2, control = control_params) # didn't converge
@@ -171,6 +190,99 @@ AIC(glmm_model_4) # -979.8162
 glmm_model_5 <- glmer(log(pers) ~ Colony + (1 | Individ_id), family = Gamma(link = "identity"), data = analysis_df_2, control = control_params)
 AIC(glmm_model_5) # -3272.464; the most favourable model so far
 
-# Hence, if I want a log-link function, log_glmm is my safest bet since it doesn't remove Alkefjellet and models data correctly
+Anova(log_glmm, type = 3)
+plot(analysis_df$pers)
+residuals_log_glmm <- residuals(log_glmm)
+
+# Plot residuals against fitted values
+plot(fitted(log_glmm), residuals_log_glmm, 
+     xlab = "Fitted values", ylab = "Residuals",
+     main = "Residuals vs Fitted")
+
+# Add a horizontal line at y = 0 for reference
+abline(h = 0, col = "red", lty = 2)
+
+# Running a GEE
+# Remove prefixes from Individ_id
+analysis_df$Individ_id <- as.numeric(gsub("[^0-9]", "", analysis_df$Individ_id))
+# Fit GEE model after converting Individ_id to numeric
+gee_model <- geeglm(pers ~ Colony, 
+                    id = Individ_id,
+                    family = Gamma(link = "log"),
+                    corstr = "exchangeable",
+                    data = analysis_df)
+summary(gee_model)
+plot(gee_model, which = 1)  # Residuals vs. Fitted for homogeneity of variance
+hist(resid(gee_model), breaks = 90)
+qqnorm(resid(gee_model))
+qqline(resid(gee_model))
+analysis_df$resid = resid(gee_model)
+boxplot(analysis_df$resid~analysis_df$Colony) 
+
+# Final model----
+# After careful consideration, I have decided to drop Alkefjellet from the dataset to maintain homogenity of variance across
+# all predictor variables: glmm_model_3
+
+final_model <- glmm_model_3
+
+null_model <- glmer(pers ~ 1 + (1 | Individ_id), family = Gamma(link = "identity"), data = analysis_df_2, control = control_params)
+nagelkerke_results <- nagelkerke(glmm_model_3, null = null_model)
+print(nagelkerke_results) # variance explained by fixed effects
+
+# Parametric bootstrap to test whether the random effect has a significant effect
+nBoot <- 1000
+lrStat <- rep(NA, nBoot)
+
+ft.null <- lm(pers~Colony, data = analysis_df) # null model
+ft.alt <- lme(pers~Colony, random = ~1|Individ_id, data = analysis_df) # alternate model
+ft.alt <- try(lme(pers ~ Colony, random = ~1 | Individ_id, data = analysis_df, method = "ML"))
+if (inherits(ft.alt, "try-error")) {
+  # Handle convergence issues
+  warning("Convergence issue in fitting the alternate model with default options. Trying different optimization algorithm.")
+  
+  # Try fitting the alternate model with a different optimization algorithm
+  ft.alt <- try(lme(pers ~ Colony, random = ~1 | Individ_id, data = analysis_df, method = "REML"))
+  
+  if (inherits(ft.alt, "try-error")) {
+    # Handle convergence issues
+    warning("Convergence issue in fitting the alternate model with different optimization algorithm. Results may not be reliable.")
+  }
+}
+lrObs <- 2*logLik(ft.alt) - 2*logLik(ft.null) # observed test stat
+
+for(iBoot in 1:nBoot){
+  analysis_df$pers <- unlist(simulate(ft.null)) # resampled data
+  bNull <- lm(pers~Colony, data = analysis_df) # null model
+  bAlt <- lme(pers~Colony, random = ~1|Individ_id, data = analysis_df) # alternate model
+  lrStat[iBoot] <- 2*logLik(bAlt) - 2*logLik(bNull) # resampled test stat
+}
+
+mean(lrStat > lrObs) # p-value for test of the random effect
+hist(lrStat, col = "blue")
+abline(v = lrObs, col = "red", lwd = 3, lty = 3)
+
+
+# Post-hoc test----
+
+summary(final_model)
+library(emmeans)
+posthoc <- emmeans(final_model, pairwise ~ Colony, median = T)
+summary(posthoc)
+Tukey_HSD_results <- summary(pairs(posthoc))
+Tukey_HSD_results
+
+
+# Compute pairwise comparisons within each colony
+pairwise_comparisons <- emmeans(final_model_2, pairwise ~ 1 | Colony, data = analysis_df_3)
+
+# Display the pairwise comparisons
+summary(pairwise_comparisons)
+
+
+
+
+
+
+
 
 

@@ -13,7 +13,6 @@ input_df <- indiv_merged_df %>%
   mutate(tracking_year = ifelse(month < 7, year - 1, year))
 names(input_df)[names(input_df) == "ring"] <- "individ_id"
 
-
 # Exploring data----
 
 # 2 dataframes for tracking year

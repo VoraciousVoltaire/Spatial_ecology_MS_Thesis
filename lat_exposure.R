@@ -20,6 +20,7 @@ nbs_mylocs$colony[nbs_mylocs$colony %in% colonies_to_combine] <- "Combined"
 
 desc_nbs_mylocs <- nbs_mylocs[order(-nbs_mylocs$col_lat),]
 order_to_match <- unique(desc_nbs_mylocs$colony) 
+order_to_match
 
 df <- read.csv("/Users/ameydanole/Desktop/ENS_Rennes/argh/Amey_Danole_MS_Thesis/Ind/outputs/csv/exposure_scores_by_individual.csv")
 to_combine <- c("Skjalfandi", "Langanes")
@@ -35,6 +36,7 @@ combined_lat$col_lat[combined_lat$colony == "Combined"] <- median(unique(combine
 
 lat <- sort(unique(combined_lat$col_lat), decreasing = T)
 final_df <- cbind(pop_exposure_by_lat, lat)
+final_df
 
 # Checking normality of variables
 shapiro.test(final_df$population_exposure)

@@ -222,9 +222,11 @@ cor.test(lat_merged_df$lat, lat_merged_df$pers, method = "kendal")
 lat_merged_df
 
 
+
 merged_df_2 <- merge(hyp_1_input, harmonic_kde_final_overlap, by = "Colony")
 merged_df_with_Alk_Bjo <- merge(merged_df_2, final_df[,-2], by = "Colony")
 View(merged_df_with_Alk_Bjo)
+write.csv(merged_df_with_Alk_Bjo, "complete_df_hyp_3_with_lat.csv")
 cor.test(merged_df_with_Alk_Bjo$lat, merged_df_with_Alk_Bjo$pers, method = "kendal") # significant
 cor.test(merged_df_with_Alk_Bjo[-c(1,2),]$lat, merged_df_with_Alk_Bjo[-c(1,2),]$final_score, method = "kendal") # close 
 

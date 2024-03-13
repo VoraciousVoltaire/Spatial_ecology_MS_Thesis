@@ -15,6 +15,7 @@ dir_demClasses <- "/Users/ameydanole/Desktop/ENS_Rennes/argh/Microplastic_ingest
 dir_1by1 <- "/Users/ameydanole/Desktop/ENS_Rennes/argh/Microplastic_ingestion_by_fulmarus_glacialis/Month/outputs/multiplication_rasters" # output directory
 setwd("/Users/ameydanole/Desktop/ENS_Rennes/argh/Microplastic_ingestion_by_fulmarus_glacialis/Month/input_data")
 plastics <- raster::raster("00_PlasticsRaster.tif")
+plot(plastics)
 
 r <- raster()
 r
@@ -159,6 +160,8 @@ cor.test(merged_df$pers_ind, merged_df$pers_months, method = "kendall")
 #   tau 
 # 0.9272727 
 
+citation("lme4")
+?lme4
 
 
 write.csv(pop_exposure_month, "month_exposure_scores_by_population.csv",

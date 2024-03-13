@@ -1,7 +1,7 @@
 # This is a (relatively) clean script which calculates kernels on individual animal basis; calculates each individual's exposure score 
 # and takes a mean of those values to arrive at one exposure score for each colony
 
-# Clearing environment----
+# Clearing environment
 rm(list = ls())
 
 # Loading packages----
@@ -16,7 +16,7 @@ library(adehabitatHR) # for calculating kernels and their volumes
 library(spData) # for loading the spatial object 'world'
 
 # Setting outputs directory
-dir_kernels <- "/Users/ameydanole/Desktop/ENS_Rennes/argh/Microplastic_ingestion_by_fulmarus_glacialis/Ind/outputs"
+dir_kernels <- "/Users/ameydanole/Desktop/ENS_Rennes/argh/Amey_Danole_MS_Thesis/First_hyp/latest_right_attempt/outputs"
 
 # Loading data----
 
@@ -24,18 +24,44 @@ datadir <- "/Users/ameydanole/Desktop/ENS_Rennes/argh/Microplastic_ingestion_by_
 mylocs <- readRDS(paste0(datadir, "/SEATRACK_FUGLA_20220307_v2.3_FA.rds"))
 summary_info <- readRDS(paste0(datadir,"/summaryTable.rds"))
 
-# Merging and curating for NBS (Non-Breeding Season)----
+# Creating an sf object----
 
 indiv_merged_df <- merge(mylocs, summary_info, by = "ring") 
-nbs_mylocs <- indiv_merged_df %>% 
+dim(indiv_merged_df)
+nbs_mylocs <- indiv_merged_df %>% dplyr::mutate(year = year(timestamp))
+nbs_mylocs <- indiv_merged_df %>%
   filter(!grepl(c('-04-|-05-|-06-|-07-|-08-|-09-') ,timestamp)) %>%
   dplyr::mutate(year = year(timestamp))
 names(nbs_mylocs)[names(nbs_mylocs) == "ring"] <- "individ_id"
+dim(nbs_mylocs)
+nbs_mylocs_sf <- nbs_mylocs %>% 
+  sf::st_as_sf(coords = c("lon", "lat"), crs = 4326) 
 
+# Assorting by months----
 
-# Creating a new combined dataset which merges tracks from Skalfandi and Langanes (distance between colonies: 130.429 km)
-colonies_to_combine <- c("Skjalfandi", "Langanes")
-nbs_mylocs$colony[nbs_mylocs$colony %in% colonies_to_combine] <- "Combined"
+all_data <- nbs_mylocs
+df <- all_data[!is.na(all_data$timestamp), ]
+df <- df %>% dplyr::mutate(month = month(timestamp))
+months <- sort(unique(df$month))
+
+# Adding a column for nbs tracking year----
+
+df_mod <- df %>% mutate(tracking_year = ifelse(month < 7, year - 1, year))
+nbs_years <- sort(unique(df_mod$tracking_year))
+
+# results_df <- data.frame(matrix(ncol = 3))
+# colnames(results_df) <- c("Colony", "Individ_id", "Sample_size_for_kde") # Calculate sample sizefor each ind later
+
+to_combine <- c("Skjalfandi", "Langanes")
+df_mod$colony[df_mod$colony %in% to_combine] <- "Combined"
+
+# trials <- df_mod %>% group_by(colony, individ_id, tracking_year) %>% summarise(n = n()) Checking #relocations for each bird for each tracking year
+# View(trials)
+
+# # Playing around
+# length(unique(nbs_mylocs$individ_id))
+# range(nbs_mylocs$timestamp)
+# length(nbs_mylocs$individ_id)
 
 # Defining land----
 land <- as(world, "Spatial")
@@ -45,70 +71,79 @@ proj_wgs84 <- sp::CRS(sp::proj4string(land))
 
 # For loop for calculating individual animal kernels----
 
-for(i in unique(nbs_mylocs$colony)){ # First for loop start
-  sub <- as.data.frame(nbs_mylocs) %>% filter(colony == i) 
+for(i in unique(df_mod$colony)){ # First for loop begins
+  sub <- df_mod %>% filter(colony == i)
+
+  for(k in 1:length(unique(sub$tracking_year))){ # Second for loop begins
+    tracks_wgs <- sub[sub$tracking_year == unique(sub$tracking_year)[k],]
+    
+    # Kernel density estimation----
+    
+    if(nrow(tracks_wgs) > 4){ # First if loop begins
+      
+      if(min(tracks_wgs$lon) <= -179 ){ lon_min <- -180
+      } else {lon_min <- floor(min(tracks_wgs$lon))-1 }
+      
+      if(max(tracks_wgs$lon) >= 179){ lon_max <- 180
+      } else { lon_max <- ceiling(max(tracks_wgs$lon))+1 }
+      
+      if(min(tracks_wgs$lat) <= -89 ){ lat_min <- -90 
+      } else { lat_min <- floor(min(tracks_wgs$lat))-1 }
+      
+      if(max(tracks_wgs$lat) >= 89){ lat_max <- 90
+      } else { lat_max <- ceiling(max(tracks_wgs$lat))+1 }
+      
+      so.grid <- expand.grid( LON = seq(lon_min, lon_max, by=1), 
+                              LAT = seq(lat_min, lat_max, by=1))
+      
+      sp::coordinates(so.grid) <- ~LON+LAT
+      crs(so.grid) <- proj_wgs84
+      
+      # Setting a colony-centric crs
+      mean_loc <- geosphere::geomean(cbind(tracks_wgs$lon,tracks_wgs$lat))
+      DgProj <- sp::CRS(paste0("+proj=laea +lon_0=",mean_loc[1],
+                               " +lat_0=",mean_loc[2])) 
+      
+      so.grid.proj <- sp::spTransform(so.grid, CRS = DgProj)
+      coords <- so.grid.proj@coords
+      
+      c <- min(coords[,1])-1000000   ## to check my min lon
+      d <- max(coords[,1])+1000000   ## to check my max lon
+      
+      e <- min(coords[,2])-1000000   ## to check my min lat
+      f <- max(coords[,2])+1000000   ## to check my max lat
+      
+      a <- seq(c, d, by=10000)
+      b <- seq(e, f, by=10000)
+      null.grid <- expand.grid(x = a,y = b)
+      sp::coordinates(null.grid) <- ~x+y
+      sp::gridded(null.grid) <- TRUE
+      
+      # Converting tracks_wgs into a spatial points data frame
+      sp::coordinates(tracks_wgs) <- ~lon+lat
+      crs(tracks_wgs) <- proj_wgs84
+      
+      tracks <- sp::spTransform(tracks_wgs, CRS = DgProj)
+      tracks$tracking_year <- factor(tracks@data$tracking_year)
+      
+      kudl <- adehabitatHR::kernelUD(tracks[,"individ_id"], 
+                                     grid = null.grid, h = 200000)  ## smoothing factor equals 200 km for GLS data
+      
   
-  # Setting a colony-centered crs 
-  median_loc <- cbind(median(sub$lon), median(sub$lat))
-  DgProj <- sp::CRS(paste0("+proj=laea +lon_0=",median_loc[1]," +lat_0=",median_loc[2]," +ellps=GRS80 +towgs84=0,0,0,0,0,0,0 +units=m ", sep="")) 
-  
-  # Creating a colony-specific spatial points data frame
-  sp::coordinates(sub) <- ~ lon + lat
-  sp::proj4string(sub) <- sp::proj4string(land)
-  
-  # Setting a null grid for kernel estimation 
-  if(nrow(sub) > 4){
-    
-    if(min(sub$lon) <= -179 ){ lon_min <- -180
-    } else {lon_min <- floor(min(sub$lon))-1 }
-    
-    if(max(sub$lon) >= 179){ lon_max <- 180
-    } else { lon_max <- ceiling(max(sub$lon))+1 }
-    
-    if(min(sub$lat) <= -89 ){ lat_min <- -90 
-    } else { lat_min <- floor(min(sub$lat))-1 }
-    
-    if(max(sub$lat) >= 89){ lat_max <- 90
-    } else { lat_max <- ceiling(max(sub$lat))+1 }
-    
-    so.grid <- expand.grid(LON = seq(lon_min, lon_max, by=1), 
-                           LAT = seq(lat_min, lat_max, by=1))
-    
-    sp::coordinates(so.grid) <- ~LON+LAT
-    sp::proj4string(so.grid) <- sp::proj4string(land)
-    
-    so.grid.proj <- sp::spTransform(so.grid, CRS = DgProj) # transforming null grid to new crs
-    coords <- so.grid.proj@coords
-    
-    c <- min(coords[,1])-1000000   ## to check my min lon
-    d <- max(coords[,1])+1000000   ## to check my max lon
-    
-    e <- min(coords[,2])-1000000   ## to check my min lat
-    f <- max(coords[,2])+1000000   ## to check my max lat
-    
-    a <- seq(c, d, by=10000)
-    b <- seq(e, f, by=10000)
-    null.grid <- expand.grid(x = a,y = b)
-    sp::coordinates(null.grid) <- ~ x + y
-    sp::gridded(null.grid) <- TRUE
-    
-    tracks <- sp::spTransform(sub, CRS = DgProj)
-    tracks$individ_id <- factor(tracks$individ_id)
-    
-    # Kernel estimation
-    kudl <- kernelUD(tracks[,"individ_id"], grid = null.grid, h = 200000) ## smoothing factor equals 200 km for GLS data
-    
     # Changing from estUDm class to spatial pixels data frame
     kern100 <- adehabitatHR::estUDm2spixdf(kudl)
+  
     # Creating a raster stack so that each layer corresponds to a raster from a separate individual
     kern100_stk <- raster::stack(kern100)
     
     vud <- adehabitatHR::getvolumeUD(kudl) # calculating home range percent estimates from kernels
     
-    fud <- vector("list", length(unique(sub$individ_id)))
+    fud <- vector("list", length(unique(tracks_wgs$individ_id)))
     
-    for(j in 1:length(unique(sub$individ_id))){ # Second for loop starts
+    for(j in 1:length(unique(tracks_wgs$individ_id))){ # Second for loop starts
       fud <- vud[[j]]
+      
+      
       hr95 <- as.data.frame(fud)[,1]
       hr95 <- as.numeric(hr95 <= 95) # now the data's binary, 1 meaning the pixel belongs to the individual's home range
       hr95 <- data.frame(hr95)
@@ -139,30 +174,30 @@ for(i in unique(nbs_mylocs$colony)){ # First for loop start
       cropped <- raster::crop(rast, croppedExtent)
       cropped[is.na(rast)] <- 0
       
-      # Changing land's projection
+      # Masking land
       mask_proj <- sp::spTransform(land, DgProj) # changing projection 
       mask_proj_pol <- as(mask_proj, "SpatialPolygons") 
       
-      ## set to NA cells that overlap mask (land) 
+      ## set to NA cells that overlap mask (land)
       rast_mask_na <- raster::mask(cropped, mask_proj_pol, inverse = TRUE)
       rast_mask <- rast_mask_na
-      rast_mask[is.na(rast_mask)] <- 0 
+      rast_mask[is.na(rast_mask)] <- 0
       rast_mask_sum1 <- rast_mask/sum(raster::getValues(rast_mask))
       rast_mask[rast_mask == 0] <- NA
       rast_mask_final <- raster::mask(rast_mask_sum1, mask_proj_pol, inverse = TRUE) # this is to be used as the input whilst doing raster multiplication
-      # I'm guessing this step doesn't include the 0s turned NAs in the final raster
+      
       
       #PLOT & SAVE ####
-      mask_wgs84 <- raster::projectRaster(rast_mask_final, crs = proj_wgs84, over = F)
-      setwd("/Users/ameydanole/Desktop/ENS_Rennes/argh/Microplastic_ingestion_by_fulmarus_glacialis/Ind/outputs/unique_tifs/")
-      raster::writeRaster(mask_wgs84, filename = paste0(i,"_", j ,".tif"),
+      mask_wgs84 <- raster::projectRaster(rast_mask_final,  crs = proj_wgs84, over = F)
+      setwd("/Users/ameydanole/Desktop/ENS_Rennes/argh/Amey_Danole_MS_Thesis/First_hyp/latest_right_attempt/outputs/unique_tifs/")
+      raster::writeRaster(mask_wgs84, filename = paste0(i,"_",(unique(tracks_wgs$individ_id))[j],unique(sub$tracking_year)[k],".tif"),
                           format = "GTiff", overwrite = T)      
-      setwd("/Users/ameydanole/Desktop/ENS_Rennes/argh/Microplastic_ingestion_by_fulmarus_glacialis/Ind/input_data/tifs/")
-      raster::writeRaster(rast_mask_final, filename = paste0(i,"_", j ,".tif"),
+      setwd("/Users/ameydanole/Desktop/ENS_Rennes/argh/Amey_Danole_MS_Thesis/First_hyp/latest_right_attempt/outputs/input_tifs/")
+      raster::writeRaster(rast_mask_final, filename = paste0(i,"_",(unique(tracks_wgs$individ_id))[j],"_",(unique(sub$tracking_year))[k],".tif"),
                           format = "GTiff", overwrite = T)    
       
       ## Plot
-      png(filename = paste0(dir_kernels, "/unique_distributions/", i, "_", j, ".png"))
+      png(filename = paste0(dir_kernels, "/unique_distributions/",i, "_",(unique(tracks_wgs$individ_id))[j],"_",(unique(sub$tracking_year))[k],".png"))
       plot(mask_wgs84)
       plot(land, add = T, col = "#66000000")
       dev.off()
@@ -170,100 +205,12 @@ for(i in unique(nbs_mylocs$colony)){ # First for loop start
       
     } # Second for loop ends
     
-  } # first if loop end
+  } # First if loop end
   
-} # first for loop end
-
-
-# Calculating home range overlap using kerneloverlaphr----
-
-results_df <- data.frame(matrix(ncol = 2))
-colnames(results_df) <- c("Colony", "Overlap_score")
-
-for(i in unique(nbs_mylocs$colony)){ # First for loop start
-  sub <- as.data.frame(nbs_mylocs) %>% filter(colony == i) 
+} #  Second for loop ends
   
-  # Setting a colony-centered crs 
-  median_loc <- cbind(median(sub$lon), median(sub$lat))
-  DgProj <- sp::CRS(paste0("+proj=laea +lon_0=",median_loc[1]," +lat_0=",median_loc[2]," +ellps=GRS80 +towgs84=0,0,0,0,0,0,0 +units=m ", sep="")) 
-  
-  # Creating a colony-specific spatial points data frame
-  sp::coordinates(sub) <- ~ lon + lat
-  sp::proj4string(sub) <- sp::proj4string(land)
-  
-  # Setting a null grid for kernel estimation 
-  if(nrow(sub) > 4){ # First if loop starts
-    
-    if(min(sub$lon) <= -179 ){ lon_min <- -180
-    } else {lon_min <- floor(min(sub$lon))-1 }
-    
-    if(max(sub$lon) >= 179){ lon_max <- 180
-    } else { lon_max <- ceiling(max(sub$lon))+1 }
-    
-    if(min(sub$lat) <= -89 ){ lat_min <- -90 
-    } else { lat_min <- floor(min(sub$lat))-1 }
-    
-    if(max(sub$lat) >= 89){ lat_max <- 90
-    } else { lat_max <- ceiling(max(sub$lat))+1 }
-    
-    so.grid <- expand.grid(LON = seq(lon_min, lon_max, by=1), 
-                           LAT = seq(lat_min, lat_max, by=1))
-    
-    sp::coordinates(so.grid) <- ~LON+LAT
-    sp::proj4string(so.grid) <- sp::proj4string(land)
-    
-    so.grid.proj <- sp::spTransform(so.grid, CRS = DgProj) # transforming null grid to new crs
-    coords <- so.grid.proj@coords
-    
-    c <- min(coords[,1])-1000000   ## to check my min lon
-    d <- max(coords[,1])+1000000   ## to check my max lon
-    
-    e <- min(coords[,2])-1000000   ## to check my min lat
-    f <- max(coords[,2])+1000000   ## to check my max lat
-    
-    a <- seq(c, d, by=10000)
-    b <- seq(e, f, by=10000)
-    null.grid <- expand.grid(x = a,y = b)
-    sp::coordinates(null.grid) <- ~ x + y
-    sp::gridded(null.grid) <- TRUE
-    
-    tracks <- sp::spTransform(sub, CRS = DgProj)
-    tracks$individ_id <- factor(tracks$individ_id)
-    
-    # Kernel estimation
-    kudl <- kernelUD(tracks[,"individ_id"], grid = null.grid, h = 200000) ## smoothing factor equals 200 km for GLS data
-
-    # Calculating home-range overlap using kerneloverlaphr
-    ade_kde_overlap <- kerneloverlaphr(kudl, meth = "BA", percent = 95, conditional = F) # try with BA, makes no sense with method = "UDOI" because overlap with itself wasn't yielding 1; try using "BA" as the method
-    range(as.data.frame(ade_kde_overlap)) # 0 to 0.9998733
-    df <- as.data.frame(ade_kde_overlap)
-    median_df <- apply(df, 1, median, na.rm = T)
-    median_overlap_df <- as.data.frame(median_df)
-    colnames(median_overlap_df) <- "overlap"
-    colony_hroverlap <- median(median_overlap_df$overlap) 
-    to_bind <- data.frame("Colony" = i, "Overlap_score" = colony_hroverlap)
-    results_df <- rbind(results_df, to_bind)
-    
-  } # First if loop ends
 } # First for loop ends
 
-View(results_df)
-kde_final_overlap <- results_df[-1,]
-View(kde_final_overlap)
-kde_final_overlap$Colony <- gsub(" ",".",kde_final_overlap$Colony)
 
-variance_df <- read.csv("/Users/ameydanole/Desktop/ENS_Rennes/argh/Amey_Danole_MS_Thesis/Ind/outputs/csv/exposure_scores_by_individual.csv")
-to_combine <- c("Skjalfandi", "Langanes")
-variance_df$population[variance_df$population %in% to_combine] <- "Combined"
 
-variance_output <- variance_df %>% group_by(population) %>% summarize(variance = var(exposure_score)) 
-colnames(variance_output)[colnames(variance_output) == "population"] <- "Colony"
 
-# Correlation test----
-corr_df <- merge(kde_final_overlap, variance_output, by = "Colony")
-write.csv(corr_df, "/Users/ameydanole/Desktop/ENS_Rennes/argh/Amey_Danole_MS_Thesis/Ind/outputs/csv/third_hyp_pure_ade_corr_test.csv", row.names = F)
-
-correlation <- cor.test(corr_df$Overlap_score, corr_df$variance, method = "kendall")
-print(correlation)
-
-# This concludes the script for calculating individual home ranges and calculating their overlap using the adehabitatHR package----

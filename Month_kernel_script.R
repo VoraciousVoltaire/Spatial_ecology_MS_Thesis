@@ -55,6 +55,8 @@ all_data <- nbs_mylocs
 df <- all_data[!is.na(all_data$timestamp), ]
 df <- df %>% dplyr::mutate(month = month(timestamp))
 months <- sort(unique(df$month))
+to_combine <- c("Skjalfandi", "Langanes")
+df$colony[df$colony %in% to_combine] <- "Combined"
 
 # Setting a directory for month-wise output rasters
 dir_kernels <- "/Users/ameydanole/Desktop/ENS_Rennes/argh/Microplastic_ingestion_by_fulmarus_glacialis/Month/outputs"
