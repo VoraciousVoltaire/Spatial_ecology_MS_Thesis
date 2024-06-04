@@ -1,0 +1,139 @@
+"","Region","Month","Sample_size_for_kde"
+"2","Celtic-Biscay Shelf",1,4110
+"3","Celtic-Biscay Shelf",2,3283
+"4","Celtic-Biscay Shelf",3,3354
+"5","Celtic-Biscay Shelf",4,4445
+"6","Celtic-Biscay Shelf",5,4197
+"7","Celtic-Biscay Shelf",6,3777
+"8","Celtic-Biscay Shelf",7,4146
+"9","Celtic-Biscay Shelf",8,2903
+"10","Celtic-Biscay Shelf",9,2012
+"11","Celtic-Biscay Shelf",10,2064
+"12","Celtic-Biscay Shelf",11,3254
+"13","Celtic-Biscay Shelf",12,3973
+"14","North Sea",1,15889
+"15","North Sea",2,12815
+"16","North Sea",3,11283
+"17","North Sea",4,12353
+"18","North Sea",5,12482
+"19","North Sea",6,10238
+"20","North Sea",7,14820
+"21","North Sea",8,13116
+"22","North Sea",9,9112
+"23","North Sea",10,8281
+"24","North Sea",11,10808
+"25","North Sea",12,13300
+"26","Faroe Plateau",1,1047
+"27","Faroe Plateau",2,836
+"28","Faroe Plateau",3,861
+"29","Faroe Plateau",4,882
+"30","Faroe Plateau",5,1103
+"31","Faroe Plateau",6,546
+"32","Faroe Plateau",7,910
+"33","Faroe Plateau",8,478
+"34","Faroe Plateau",9,339
+"35","Faroe Plateau",10,372
+"36","Faroe Plateau",11,577
+"37","Faroe Plateau",12,939
+"38","Norwegian Sea",1,11766
+"39","Norwegian Sea",2,12280
+"40","Norwegian Sea",3,17648
+"41","Norwegian Sea",4,13018
+"42","Norwegian Sea",5,6175
+"43","Norwegian Sea",6,1473
+"44","Norwegian Sea",7,3346
+"45","Norwegian Sea",8,6135
+"46","Norwegian Sea",9,3359
+"47","Norwegian Sea",10,4243
+"48","Norwegian Sea",11,5376
+"49","Norwegian Sea",12,10696
+"50","Iceland Shelf and Sea",1,7961
+"51","Iceland Shelf and Sea",2,8490
+"52","Iceland Shelf and Sea",3,9576
+"53","Iceland Shelf and Sea",4,8030
+"54","Iceland Shelf and Sea",5,5852
+"55","Iceland Shelf and Sea",6,6474
+"56","Iceland Shelf and Sea",7,6759
+"57","Iceland Shelf and Sea",8,2196
+"58","Iceland Shelf and Sea",9,1118
+"59","Iceland Shelf and Sea",10,1779
+"60","Iceland Shelf and Sea",11,2457
+"61","Iceland Shelf and Sea",12,5009
+"62","Greenland Sea",1,3239
+"63","Greenland Sea",2,4050
+"64","Greenland Sea",3,3753
+"65","Greenland Sea",4,2195
+"66","Greenland Sea",5,3516
+"67","Greenland Sea",6,3175
+"68","Greenland Sea",7,3473
+"69","Greenland Sea",8,3816
+"70","Greenland Sea",9,1729
+"71","Greenland Sea",10,3179
+"72","Greenland Sea",11,2481
+"73","Greenland Sea",12,3100
+"74","Canadian Eastern Arctic - West Greenland",1,147
+"75","Canadian Eastern Arctic - West Greenland",2,45
+"76","Canadian Eastern Arctic - West Greenland",4,29
+"77","Canadian Eastern Arctic - West Greenland",5,131
+"78","Canadian Eastern Arctic - West Greenland",6,31
+"79","Canadian Eastern Arctic - West Greenland",7,213
+"80","Canadian Eastern Arctic - West Greenland",8,1108
+"81","Canadian Eastern Arctic - West Greenland",9,516
+"82","Canadian Eastern Arctic - West Greenland",10,415
+"83","Canadian Eastern Arctic - West Greenland",11,693
+"84","Canadian Eastern Arctic - West Greenland",12,392
+"85","Labrador - Newfoundland",1,32
+"86","Labrador - Newfoundland",2,14
+"87","Labrador - Newfoundland",4,8
+"88","Labrador - Newfoundland",5,24
+"89","Labrador - Newfoundland",7,121
+"90","Labrador - Newfoundland",8,1055
+"91","Labrador - Newfoundland",9,696
+"92","Labrador - Newfoundland",10,571
+"93","Labrador - Newfoundland",11,749
+"94","Labrador - Newfoundland",12,319
+"95","Barents Sea",1,7384
+"96","Barents Sea",2,7280
+"97","Barents Sea",3,7285
+"98","Barents Sea",4,7348
+"99","Barents Sea",5,4644
+"100","Barents Sea",6,4607
+"101","Barents Sea",7,5086
+"102","Barents Sea",8,11107
+"103","Barents Sea",9,20381
+"104","Barents Sea",10,14894
+"105","Barents Sea",11,9121
+"106","Barents Sea",12,6801
+"107","Iberian Coastal",2,11
+"108","Iberian Coastal",3,6
+"109","Iberian Coastal",4,36
+"110","Iberian Coastal",5,34
+"111","Iberian Coastal",6,31
+"112","Iberian Coastal",7,30
+"113","Iberian Coastal",8,19
+"114","Iberian Coastal",9,36
+"115","Iberian Coastal",10,12
+"116","Kara Sea",1,32
+"117","Kara Sea",2,6
+"118","Kara Sea",6,45
+"119","Kara Sea",7,53
+"120","Kara Sea",8,219
+"121","Kara Sea",9,1437
+"122","Kara Sea",10,779
+"123","Kara Sea",11,342
+"124","Kara Sea",12,133
+"125","Hudson Bay Complex",7,23
+"126","Hudson Bay Complex",8,276
+"127","Hudson Bay Complex",9,111
+"128","Hudson Bay Complex",11,5
+"129","Scotian Shelf",1,32
+"130","Scotian Shelf",8,33
+"131","Scotian Shelf",9,113
+"132","Scotian Shelf",10,163
+"133","Scotian Shelf",11,162
+"134","Scotian Shelf",12,137
+"135","Northeast U.S. Continental Shelf",1,61
+"136","Northeast U.S. Continental Shelf",9,15
+"137","Northeast U.S. Continental Shelf",10,49
+"138","Northeast U.S. Continental Shelf",11,70
+"139","Northeast U.S. Continental Shelf",12,197
